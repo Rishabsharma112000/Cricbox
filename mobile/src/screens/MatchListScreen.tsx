@@ -1,29 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { MatchCard } from '../components/MatchCard';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { getMatches } from '../services/matchService';
+import type { AppColors } from '../theme/colors';
+import { useAppColors } from '../theme/colors';
 import type { Match, MatchStatus } from '../types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'MatchList'>;
+type MatchListRouteName = 'LiveMatches' | 'UpcomingMatches' | 'CompletedMatches';
 
-const TABS: Array<{ key: MatchStatus; label: string }> = [
-  { key: 'LIVE', label: 'Live' },
-  { key: 'UPCOMING', label: 'Upcoming' },
-  { key: 'COMPLETED', label: 'Completed' },
+type Props = NativeStackScreenProps<RootStackParamList, MatchListRouteName>;
+
+const BOTTOM_BAR_HEIGHT = 64;
+
+const TABS: Array<{ key: MatchStatus; label: string; route: MatchListRouteName }> = [
+  { key: 'LIVE', label: 'Live', route: 'LiveMatches' },
+  { key: 'UPCOMING', label: 'Upcoming', route: 'UpcomingMatches' },
+  { key: 'COMPLETED', label: 'Completed', route: 'CompletedMatches' },
 ];
 
-export function MatchListScreen({ navigation }: Props) {
-  const [activeTab, setActiveTab] = useState<MatchStatus>('LIVE');
+const STATUS_BY_ROUTE: Record<MatchListRouteName, MatchStatus> = {
+  LiveMatches: 'LIVE',
+  UpcomingMatches: 'UPCOMING',
+  CompletedMatches: 'COMPLETED',
+};
+
+export function MatchListScreen({ navigation, route }: Props) {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const activeStatus = STATUS_BY_ROUTE[route.name];
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadMatches(activeTab);
-  }, [activeTab]);
+    loadMatches(activeStatus);
+  }, [activeStatus]);
 
   async function loadMatches(status: MatchStatus) {
     setLoading(true);
@@ -44,7 +59,7 @@ export function MatchListScreen({ navigation }: Props) {
     if (loading) {
       return (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.stateText}>Loading matches...</Text>
         </View>
       );
@@ -67,84 +82,101 @@ export function MatchListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabRow}>
+      <FlatList
+        data={matches}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmptyState}
+        refreshing={loading}
+        onRefresh={() => loadMatches(activeStatus)}
+        renderItem={({ item }) => (
+          <MatchCard match={item} onPress={() => navigation.navigate('MatchDetails', { matchId: item.id.toString() })} />
+        )}
+      />
+
+      <View style={styles.bottomBar}>
         {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
+          const isActive = activeStatus === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
-              style={[styles.tab, isActive && styles.activeTab]}
-              onPress={() => setActiveTab(tab.key)}
+              style={[styles.bottomTab, isActive && styles.activeBottomTab]}
+              onPress={() => {
+                if (!isActive) {
+                  navigation.replace(tab.route);
+                }
+              }}
+              activeOpacity={0.85}
             >
-              <Text style={[styles.tabText, isActive && styles.activeTabText]}>{tab.label}</Text>
+              <Text style={[styles.bottomTabText, isActive && styles.activeBottomTabText]}>{tab.label}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
-
-      {loading && !matches.length ? (
-        renderEmptyState()
-      ) : error && !matches.length ? (
-        renderEmptyState()
-      ) : matches.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <FlatList
-          data={matches}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <MatchCard
-              match={item}
-              onPress={() => navigation.navigate('MatchDetails', { matchId: item.id.toString() })}
-            />
-          )}
-        />
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-    padding: 16,
-  },
-  tabRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    gap: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 999,
-    backgroundColor: '#e5e7eb',
-  },
-  activeTab: {
-    backgroundColor: '#2563eb',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  activeTabText: {
-    color: '#fff',
-  },
-  listContent: {
-    paddingBottom: 16,
-  },
-  stateContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stateText: {
-    fontSize: 15,
-    color: '#6b7280',
-    marginTop: 8,
-  },
 });
+
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    listContent: {
+      flexGrow: 1,
+      padding: 16,
+      paddingBottom: BOTTOM_BAR_HEIGHT + 16,
+    },
+    stateContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    stateText: {
+      fontSize: 15,
+      color: colors.mutedText,
+      marginTop: 8,
+    },
+    bottomBar: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: BOTTOM_BAR_HEIGHT,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      flexDirection: 'row',
+      gap: 10,
+      alignItems: 'center',
+    },
+    bottomTab: {
+      flex: 1,
+      height: 44,
+      borderRadius: 999,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    activeBottomTab: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    bottomTabText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    activeBottomTabText: {
+      color: colors.onPrimary,
+    },
+  });
+}

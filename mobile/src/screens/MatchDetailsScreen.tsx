@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -6,11 +6,16 @@ import { CommentaryItem as CommentaryItemComponent } from '../components/Comment
 import { ScoreCard } from '../components/ScoreCard';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { getCommentary, getMatchDetails } from '../services/matchService';
+import type { AppColors } from '../theme/colors';
+import { useAppColors } from '../theme/colors';
 import type { CommentaryItem, Match } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MatchDetails'>;
 
 export function MatchDetailsScreen({ route }: Props) {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [match, setMatch] = useState<Match | null>(null);
   const [commentary, setCommentary] = useState<CommentaryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +47,7 @@ export function MatchDetailsScreen({ route }: Props) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.stateText}>Loading details...</Text>
       </View>
     );
@@ -77,42 +82,44 @@ export function MatchDetailsScreen({ route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 24,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  meta: {
-    fontSize: 14,
-    color: '#374151',
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  stateText: {
-    fontSize: 15,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-});
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 24,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    meta: {
+      fontSize: 14,
+      color: colors.mutedText,
+      marginBottom: 4,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    stateText: {
+      fontSize: 15,
+      color: colors.mutedText,
+      marginTop: 8,
+    },
+  });
+}
