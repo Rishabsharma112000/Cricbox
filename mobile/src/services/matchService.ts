@@ -2,7 +2,7 @@ import axios from 'axios';
 
 import type { CommentaryItem, Match, MatchStatus } from '../types';
 
-const BASE_URL = 'http://192.168.1.38:3000';
+const BASE_URL = 'http://192.168.1.39:3000';
 
 export async function getMatches(status?: MatchStatus): Promise<Match[]> {
   const response = await axios.get<Match[]>(`${BASE_URL}/matches`, {
